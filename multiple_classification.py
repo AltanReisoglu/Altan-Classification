@@ -18,8 +18,10 @@ scaler = StandardScaler()
 train_scaled = scaler.fit_transform(x_train)
 valid_scaled = scaler.transform(x_valid)
 x_features,x_numerics=x_train.shape
-train_scaled = torch.tensor(train_scaled, dtype=torch.float32)
-valid_scaled = torch.tensor(valid_scaled, dtype=torch.float32)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+train_scaled = torch.tensor(train_scaled, dtype=torch.float32).to(device)
+valid_scaled = torch.tensor(valid_scaled, dtype=torch.float32).to(device)
+y_train = y_train.to(device)
 
 class AltanClassifier(nn.Module):
     def __init__(self,x_numerics,hidden_Size):
@@ -59,8 +61,14 @@ class AltanClassifier(nn.Module):
                 [w, b] = self.linear2.parameters()
                 print(f"Epoch {_ + 1}: Weight = {w[0][0].item()}, Loss = {loss.item()}")
     def predict(self,x):
+        model.eval()
         with torch.no_grad():
             y_predict=self.forward(x)
             return y_predict
+
 model=AltanClassifier(x_numerics,256)
-model.fit(train_scaled,y_train,30)
+model = model.to(device)
+model.fit(train_scaled,y_train,60)
+pred_val=torch.argmax(model.predict(valid_scaled),dim=1).cpu().numpy()
+print(accuracy_score(np.array(y_valid),pred_val))
+
